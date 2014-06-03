@@ -1,24 +1,25 @@
+extern crate irc;
+
 use std::io::net::tcp::TcpStream;
 use std::io::BufferedReader;
 
-use lib::IrcCallbacks;
-use lib::IrcConnection;
-
-mod lib;
+use irc::IrcConnection;
+use irc::msg::Message;
+use irc::msg::cmd;
 
 fn main() {
-	fn on_connect(_connection: &mut IrcConnection) {
-		println!("Connected");
-	}
-	fn on_numeric(_connection: &mut IrcConnection, n: uint, origin: &str, params: &[&str]) {
-		println!("Numeric event \\#{} with params {}", n, params);
-	}
-	let callbacks = IrcCallbacks {
-		on_connect: on_connect,
-		on_numeric: on_numeric,
+	let message = Message { 
+		prefix: None,
+		command: cmd::PrivMsg("#rust".to_string(), "Hi there everyone".to_string()),
 	};
-	let mut connection = IrcConnection::connect(callbacks, "irc.mozilla.org", 6667, "Dr-Emann", "dremann", "Zachary Dremann").unwrap();
+	
+	println!("{}", message);
 
-	connection.start_loop();
+	let on_msg = |message: &Message, _sender: &Sender<Message>| {
+		println!("{}", *message);
+	};
 
+	let mut connection = IrcConnection::connect("irc.mozilla.org", 6667, "Dr-Emann".to_string(), "dremann".to_string(), "Zachary Dremann".to_string(), on_msg).unwrap();
+
+	connection.run_loop();
 }
