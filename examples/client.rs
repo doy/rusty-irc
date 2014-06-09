@@ -1,25 +1,27 @@
 extern crate irc;
 
-use std::io::net::tcp::TcpStream;
-use std::io::BufferedReader;
+use std::io::stdio;
 
-use irc::IrcConnection;
+use irc::IrcClient;
 use irc::msg::Message;
-use irc::msg::cmd;
+//use irc::msg::cmd;
 
 fn main() {
-	let message = Message { 
-		prefix: None,
-		command: cmd::PrivMsg("#rust".to_string(), "Hi there everyone".to_string()),
-	};
-	
-	println!("{}", message);
+	let mut stderr = stdio::stderr();
 
-	let on_msg = |message: &Message, _sender: &Sender<Message>| {
+	let mut args = std::os::args().move_iter();
+	args.next();
+	let host = args.next().expect("No hostname passed");
+	let port: u16 = from_str(args.next().unwrap_or_else(|| { let _ = writeln!(stderr, "No port given. Assuming 6667."); "6667".to_string() }).as_slice())
+		.expect("Port must be a number");
+
+	drop(args);
+
+	let mut connection = IrcClient::connect(host.as_slice(), port, "Dr-Emann".to_string(), "dremann".to_string(), "Zachary Dremann".to_string()).unwrap();
+
+	let on_msg = |message: &Message| {
 		println!("{}", *message);
 	};
 
-	let mut connection = IrcConnection::connect("irc.mozilla.org", 6667, "Dr-Emann".to_string(), "dremann".to_string(), "Zachary Dremann".to_string(), on_msg).unwrap();
-
-	connection.run_loop();
+	connection.run_loop(on_msg);
 }

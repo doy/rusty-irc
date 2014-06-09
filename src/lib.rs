@@ -11,23 +11,20 @@ use msg::cmd;
 
 pub mod msg;
 
-pub struct IrcConnection<'a> {
+pub struct IrcClient {
 	stream: TcpStream,
 	output_sender: Sender<Message>,
-	msg_callback: |&Message, &Sender<Message>|: 'a -> ()
 }
 
-impl<'a> IrcConnection<'a> {
-	pub fn connect<'b>(
-			host: &str, port: u16, nick: String, username: String,
-			real_name: String, msg_callback: |&Message, &Sender<Message>|: 'b -> ()) -> IoResult<IrcConnection<'b>> {
+impl IrcClient {
+	pub fn connect(
+			host: &str, port: u16, nick: String, username: String, real_name: String) -> IoResult<IrcClient> {
 		
 		let (send_writer, rec_writer) = channel();
 
-		let mut connection = IrcConnection {
+		let mut connection = IrcClient{
 			stream: try!(TcpStream::connect(host, port)),
 			output_sender: send_writer.clone(),
-			msg_callback: msg_callback,
 		};
 
 		let writer = connection.stream.clone();
@@ -36,12 +33,12 @@ impl<'a> IrcConnection<'a> {
 		spawn(proc() {
 			let mut writer = writer;
 			for msg in rec_writer.iter() {
-				(write!(writer, "{}", msg)).ok().expect("Unable to write to stream");
+				(write!(writer, "{}\r\n", msg)).ok().expect("Unable to write to stream");
 			}
 		});
 
 		connection.send(Message::new(cmd::Nick(nick)));
-		connection.send(Message::new(cmd::User(username, 0, real_name)));
+		connection.send(Message::new(cmd::User(username, 8, real_name)));
 		Ok(connection)
 	}
 
@@ -50,7 +47,7 @@ impl<'a> IrcConnection<'a> {
 	}
 
 	fn on_msg_rec(msg: &Message, sender: &Sender<Message>) {
-		let prefix = &msg.prefix;
+		let _prefix = &msg.prefix;
 		let cmd = &msg.command;
 		match *cmd {
 			cmd::Ping(ref s) => sender.send(Message::new(cmd::Pong(s.clone()))),
@@ -58,7 +55,8 @@ impl<'a> IrcConnection<'a> {
 		};
 	}
 
-	pub fn run_loop(&mut self) {
+	#[allow(experimental)]
+	pub fn run_loop(&mut self, on_msg: |&Message| -> ()) {
 		let reader = &mut self.stream;
 		loop {
 			fn reader_by_ref<'a, R: Reader>(reader: &'a mut R) -> std::io::RefReader<'a, R> { reader.by_ref() }
@@ -70,8 +68,8 @@ impl<'a> IrcConnection<'a> {
 			match line {
 				Ok(line) => match from_str::<Message>(line.as_slice().trim_right()) {
 					Some(msg) => {
-						IrcConnection::on_msg_rec(&msg, &self.output_sender);
-						(self.msg_callback)(&msg, &self.output_sender);
+						IrcClient::on_msg_rec(&msg, &self.output_sender);
+						on_msg(&msg);
 					},
 					None => println!("Invalid Message recieved"),
 				},
