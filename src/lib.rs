@@ -46,6 +46,10 @@ impl IrcClient {
 		self.output_sender.send(message);
 	}
 
+	pub fn sender(&self) -> Sender<Message> {
+		self.output_sender.clone()
+	}
+
 	fn on_msg_rec(msg: &Message, sender: &Sender<Message>) {
 		let _prefix = &msg.prefix;
 		let cmd = &msg.command;

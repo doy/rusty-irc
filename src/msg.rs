@@ -17,7 +17,7 @@ pub mod cmd {
 		Pong(String),
 		Error(String),
 		Away(Option<String>),
-		Numeric(u16, Option<String>),
+		Numeric(u16, String, Option<String>),
 		UnknownCmd(String, Vec<String>)
 	}
 }
@@ -66,7 +66,7 @@ impl<'a> fmt::Show for Message {
 			cmd::Pong(ref msg) => write!(formatter, "PONG :{}", msg),
 			cmd::Error(ref msg) => write!(formatter, "ERROR :{}", msg),
 			cmd::Away(ref msg) => if msg.is_some() { write!(formatter, "AWAY :{}", msg.get_ref()) } else { write!(formatter, "AWAY") },
-			cmd::Numeric(i, ref msg) => if msg.is_some() { write!(formatter, "{:03u} :{}", i, msg.get_ref()) } else { write!(formatter, "{:03u}", i) },
+			cmd::Numeric(i, ref target, ref msg) => if msg.is_some() { write!(formatter, "{:03u} {} :{}", i, target, msg.get_ref()) } else { write!(formatter, "{:03u} {}", i, target) },
 			cmd::UnknownCmd(ref cmd, ref args) => {
 				try!(write!(formatter, "{}", cmd));
 				let mut iter = args.iter().peekable();
@@ -135,7 +135,12 @@ impl FromStr for Message {
 			}
 		}
 
-		args.push(current_str.take_unwrap());
+		if cmd.is_none() {
+			cmd = current_str.take();
+		}
+		else {
+			args.push(current_str.take_unwrap());
+		}
 
 		let cmd = match cmd.map(|s| s.into_ascii_upper()).as_ref().map(|s| s.as_slice()) {
 			Some(s) => {
@@ -162,7 +167,10 @@ impl FromStr for Message {
 					"AWAY" if args.len() == 0 || args.len() == 1 => cmd::Away(args.pop()),
 					other => {
 						match from_str::<u16>(other) {
-							Some(n) if args.len() == 0 || args.len() == 1 => cmd::Numeric(n, args.pop()),
+							Some(n) if args.len() == 1 || args.len() == 2 => {
+								let mut iter = args.move_iter();
+								cmd::Numeric(n, iter.next().unwrap(), iter.next())
+							}
 							_ => cmd::UnknownCmd(s.to_string(), args)
 						}
 					}

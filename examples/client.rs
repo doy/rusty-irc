@@ -18,10 +18,26 @@ fn main() {
 	drop(args);
 
 	let mut connection = IrcClient::connect(host.as_slice(), port, "rusty-irc".to_string(), "dremann".to_string(), "Zachary Dremann".to_string()).unwrap();
+	let sender = connection.sender();
 
 	let on_msg = |message: &Message| {
 		println!("{}", *message);
 	};
+	
+	spawn(proc() {
+		let mut stdin = stdio::stdin();
+		for line in stdin.lines() {
+			match line {
+				Ok(s) => {
+					match from_str(s.as_slice()) {
+						Some(msg) => sender.send(msg),
+						None => ()
+					}
+				}
+				Err(_) => break,
+			}
+		}
+	});
 
 	connection.run_loop(on_msg);
 }
