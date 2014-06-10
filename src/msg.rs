@@ -3,7 +3,7 @@ use std::from_str::FromStr;
 use std::ascii::OwnedStrAsciiExt;
 
 pub mod cmd {
-	#[deriving(Clone, Show)]
+	#[deriving(Clone, PartialEq, Eq, Show, Hash)]
 	pub enum Command {
 		Nick(String),
 		User(String, u8, String),
@@ -12,7 +12,7 @@ pub mod cmd {
 		Part(String, Option<String>),
 		PrivMsg(String, String),
 		Notice(String, String),
-		//Motd(Option<String>),
+		Motd(Option<String>),
 		Ping(String),
 		Pong(String),
 		Error(String),
@@ -22,19 +22,16 @@ pub mod cmd {
 	}
 }
 
-pub struct PrefixHost {
-	hostname: String,
-	user: Option<String>,
+#[deriving(Clone, PartialEq, Eq, Hash)]
+pub struct Prefix {
+	pub name: String,
+	pub user: Option<String>,
+	pub host: Option<String>,
 }
 
-pub enum Prefix {
-	PrefixServer(String),
-	PrefixUser(String, Option<PrefixHost>),
-}
-
-#[deriving(Clone)]
+#[deriving(Clone, PartialEq, Eq, Hash)]
 pub struct Message {
-	pub prefix: Option<String>,
+	pub prefix: Option<Prefix>,
 	pub command: cmd::Command,
 }
 
@@ -43,12 +40,12 @@ impl Message {
 		Message { prefix: None, command: command }
 	}
 
-	pub fn with_prefix(prefix: String, command: cmd::Command) -> Message {
+	pub fn with_prefix(prefix: Prefix, command: cmd::Command) -> Message {
 		Message { prefix: Some(prefix), command: command }
 	}
 }
 
-impl<'a> fmt::Show for Message {
+impl fmt::Show for Message {
 	fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
 		if self.prefix.is_some() {
 			try!(write!(formatter, ":{} ", self.prefix.get_ref()));
@@ -67,6 +64,7 @@ impl<'a> fmt::Show for Message {
 			cmd::Error(ref msg) => write!(formatter, "ERROR :{}", msg),
 			cmd::Away(ref msg) => if msg.is_some() { write!(formatter, "AWAY :{}", msg.get_ref()) } else { write!(formatter, "AWAY") },
 			cmd::Numeric(i, ref target, ref msg) => if msg.is_some() { write!(formatter, "{:03u} {} :{}", i, target, msg.get_ref()) } else { write!(formatter, "{:03u} {}", i, target) },
+			cmd::Motd(ref target) => if target.is_some() { write!(formatter, "MOTD :{}", target.get_ref()) } else { write!(formatter, "MOTD") },
 			cmd::UnknownCmd(ref cmd, ref args) => {
 				try!(write!(formatter, "{}", cmd));
 				let mut iter = args.iter().peekable();
@@ -89,6 +87,50 @@ impl<'a> fmt::Show for Message {
 			}
 		}
 	}
+}
+
+impl fmt::Show for Prefix {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		try!(write!(f, "{}", self.name));
+		if self.user.is_some() {
+			try!(write!(f, "!{}", self.user.get_ref()));
+		}
+		if self.host.is_some() {
+			try!(write!(f, "@{}", self.host.get_ref()));
+		}
+		Ok(())
+	}
+}
+
+impl FromStr for Prefix {
+	fn from_str(s: &str) -> Option<Prefix> {
+		let name;
+		let user;
+		let host;
+		match s.find('!') {
+			Some(user_start) => {
+				name = s.slice_to(user_start).to_string();
+				let rest = s.slice_from(user_start + 1);
+				match rest.find('@') {
+					Some(host_start) => {
+						user = Some(rest.slice_to(host_start).to_string());
+						host = Some(rest.slice_from(host_start + 1).to_string());
+					}
+					None => {
+						user = Some(rest.to_string());
+						host = None;
+					}
+				}
+			}
+			None => {
+				name = s.to_string();
+				user = None;
+				host = None;
+			}
+		}
+		Some(Prefix{ name: name, user: user, host: host })
+	}
+
 }
 
 impl FromStr for Message {
@@ -142,6 +184,8 @@ impl FromStr for Message {
 			args.push(current_str.take_unwrap());
 		}
 
+		let prefix: Option<Prefix> = prefix.and_then(|s| from_str(s.as_slice()));
+
 		let cmd = match cmd.map(|s| s.into_ascii_upper()).as_ref().map(|s| s.as_slice()) {
 			Some(s) => {
 				match s {
@@ -165,6 +209,9 @@ impl FromStr for Message {
 					"PING" if args.len() == 1 => cmd::Ping(args.pop().unwrap()),
 					"PONG" if args.len() == 1 => cmd::Pong(args.pop().unwrap()),
 					"AWAY" if args.len() == 0 || args.len() == 1 => cmd::Away(args.pop()),
+					"QUIT" if args.len() == 0 || args.len() == 1 => cmd::Quit(args.pop()),
+					"JOIN" if args.len() == 1 => cmd::Join(args.pop().unwrap()),
+					"MOTD" if args.len() == 0 || args.len() == 1 => cmd::Motd(args.pop()),
 					other => {
 						match from_str::<u16>(other) {
 							Some(n) if args.len() == 1 || args.len() == 2 => {

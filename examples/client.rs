@@ -21,7 +21,7 @@ fn main() {
 	let sender = connection.sender();
 
 	let on_msg = |message: &Message| {
-		println!("{}", *message);
+		println!("{} {}", message.prefix, message.command);
 	};
 	
 	spawn(proc() {
