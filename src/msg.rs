@@ -138,48 +138,39 @@ impl FromStr for Message {
 		args.push(current_str.take_unwrap());
 
 		let cmd = match cmd.map(|s| s.into_ascii_upper()).as_ref().map(|s| s.as_slice()) {
-			Some("NICK") => {
-				if args.len() == 1 { Some(cmd::Nick(args.pop().unwrap())) }
-				else { None }
-			}
-			Some("USER") => {
-				if args.len() == 4 { 
-					let mut iter = args.move_iter();
-					let uname = iter.next().unwrap();
-					let opt_mode: Option<u8> = from_str(iter.next().unwrap().as_slice());
-					iter.next();
-					let fullname = iter.next().unwrap();
-					if opt_mode.is_some() {
-						Some(cmd::User(uname, opt_mode.unwrap(), fullname))
+			Some(s) => {
+				match s {
+					"NICK" if args.len() == 1 => cmd::Nick(args.pop().unwrap()),
+					"USER" if args.len() == 4 => {
+						let mut iter = args.move_iter();
+						let uname = iter.next().unwrap();
+						let opt_mode: Option<u8> = from_str(iter.next().unwrap().as_slice());
+						iter.next();
+						let fullname = iter.next().unwrap();
+						cmd::User(uname, opt_mode.unwrap_or(0), fullname)
 					}
-					else {
-						None
+					"NOTICE" if args.len() == 2 => {
+						let mut iter = args.move_iter();
+						cmd::Notice(iter.next().unwrap(), iter.next().unwrap())
+					}
+					"PRIVMSG" if args.len() == 2 => {
+						let mut iter = args.move_iter();
+						cmd::PrivMsg(iter.next().unwrap(), iter.next().unwrap())
+					}
+					"PING" if args.len() == 1 => cmd::Ping(args.pop().unwrap()),
+					"PONG" if args.len() == 1 => cmd::Pong(args.pop().unwrap()),
+					"AWAY" if args.len() == 0 || args.len() == 1 => cmd::Away(args.pop()),
+					other => {
+						match from_str::<u16>(other) {
+							Some(n) if args.len() == 0 || args.len() == 1 => cmd::Numeric(n, args.pop()),
+							_ => cmd::UnknownCmd(s.to_string(), args)
+						}
 					}
 				}
-				else { None }
 			}
-			Some("NOTICE") => {
-				if args.len() == 2 {
-					let mut iter = args.move_iter();
-					Some(cmd::Notice(iter.next().unwrap(), iter.next().unwrap()))
-				}
-				else { None }
-			}
-			Some("PRIVMSG") => {
-				if args.len() == 2 {
-					let mut iter = args.move_iter();
-					Some(cmd::PrivMsg(iter.next().unwrap(), iter.next().unwrap()))
-				}
-				else { None }
-			}
-			Some(other) => {
-				Some(cmd::UnknownCmd(other.to_string(), args))
-			}
-			None => {
-				None
-			}
+			None => cmd::UnknownCmd(String::new(), args)
 		};
 
-		cmd.map(|c| Message { prefix: prefix.take(), command: c })
+		Some(Message { prefix: prefix, command: cmd })
 	}
 }

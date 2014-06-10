@@ -17,7 +17,7 @@ fn main() {
 
 	drop(args);
 
-	let mut connection = IrcClient::connect(host.as_slice(), port, "Dr-Emann".to_string(), "dremann".to_string(), "Zachary Dremann".to_string()).unwrap();
+	let mut connection = IrcClient::connect(host.as_slice(), port, "rusty-irc".to_string(), "dremann".to_string(), "Zachary Dremann".to_string()).unwrap();
 
 	let on_msg = |message: &Message| {
 		println!("{}", *message);
