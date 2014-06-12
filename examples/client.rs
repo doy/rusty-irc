@@ -3,8 +3,6 @@ extern crate irc;
 use std::io::stdio;
 
 use irc::IrcClient;
-use irc::msg::Message;
-//use irc::msg::cmd;
 
 fn main() {
 	let mut stderr = stdio::stderr();
@@ -17,13 +15,12 @@ fn main() {
 
 	drop(args);
 
-	let mut connection = IrcClient::connect(host.as_slice(), port, "rusty-irc".to_string(), "dremann".to_string(), "Zachary Dremann".to_string()).unwrap();
-	let sender = connection.sender();
+	let (tx, rx) = channel();
 
-	let on_msg = |message: &Message| {
-		println!("{} {}", message.prefix, message.command);
-	};
-	
+	let client = IrcClient::new("rusti-irc".to_string(), "dremann".to_string(), "Zachary Dremann".to_string());
+	let connection = client.connect(host.as_slice(), port, tx).ok().unwrap();
+	let sender = connection.sender().clone();
+
 	spawn(proc() {
 		let mut stdin = stdio::stdin();
 		for line in stdin.lines() {
@@ -39,5 +36,7 @@ fn main() {
 		}
 	});
 
-	connection.run_loop(on_msg);
+	for msg in rx.iter() {
+		println!("{} {}", msg.prefix, msg.command);
+	}
 }
