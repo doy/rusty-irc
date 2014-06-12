@@ -1,4 +1,5 @@
 extern crate irc;
+extern crate libc;
 
 use std::io::stdio;
 
@@ -27,7 +28,7 @@ fn main() {
 			match line {
 				Ok(s) => {
 					match from_str(s.as_slice()) {
-						Some(msg) => sender.send(msg),
+						Some(msg) => { if sender.send_opt(msg).is_err() { break; } },
 						None => ()
 					}
 				}
@@ -39,4 +40,6 @@ fn main() {
 	for msg in rx.iter() {
 		println!("{} {}", msg.prefix, msg.command);
 	}
+
+	unsafe { libc::exit(0); }
 }

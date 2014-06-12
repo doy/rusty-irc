@@ -93,8 +93,7 @@ impl IrcClient <state::Disconnected> {
 					},
 					Err(IoError{kind: std::io::TimedOut, ..}) => continue,
 					Err(e) => {
-						println!("Unable to read line: {}", e);
-						break;
+						fail!("Unable to read line: {}", e);
 					}
 				}
 			}
