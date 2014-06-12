@@ -29,19 +29,19 @@ pub mod state {
 }
 
 pub struct IrcClient<State> {
-	nick: Option<String>,
-	username: Option<String>,
-	real_name: Option<String>,
+	nick: String,
+	username: String,
+	real_name: String,
 	state: State,
 }
 
 impl IrcClient <state::Disconnected> {
 	pub fn new(nick: String, username: String, real_name: String) -> IrcClient<state::Disconnected> {
-		IrcClient { nick: Some(nick), username: Some(username), real_name: Some(real_name), state: state::Disconnected }
+		IrcClient { nick: nick, username: username, real_name: real_name, state: state::Disconnected }
 	}
 
 	#[allow(experimental)]
-	pub fn connect(mut self, host: &str, port: u16, message_sender: Sender<Message>) -> Result<IrcClient<state::Connected>, (IoError, IrcClient<state::Disconnected>)> {
+	pub fn connect(self, host: &str, port: u16, message_sender: Sender<Message>) -> Result<IrcClient<state::Connected>, (IoError, IrcClient<state::Disconnected>)> {
 		let stream = match TcpStream::connect(host, port) {
 			Ok(stream) => stream,
 			Err(e) => return Err((e, self))
@@ -49,10 +49,12 @@ impl IrcClient <state::Disconnected> {
 
 		let (send_writer, rec_writer) = channel();
 
+		let IrcClient { nick:nick, username: username, real_name: real_name, .. } = self;
+
 		let connection = IrcClient{
-			nick: self.nick.take(),
-			username: self.username.take(),
-			real_name: self.real_name.take(),
+			nick: nick,
+			username: username,
+			real_name: real_name,
 			state: state::Connected {
 						 stream: stream.clone(),
 						 output: send_writer.clone(),
