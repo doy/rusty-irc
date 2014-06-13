@@ -73,14 +73,14 @@ impl IrcClient <state::Disconnected> {
 		});
 
 		spawn(proc() {
-			let mut reader = reader;
+			let mut reader = BufferedReader::new(reader);
 			loop {
-				fn reader_by_ref<'a, R: Reader>(reader: &'a mut R) -> std::io::RefReader<'a, R> { reader.by_ref() }
-				
-				reader.set_read_timeout(Some(500));
-				let mut buf_reader = BufferedReader::new(reader_by_ref(&mut reader));
+				unsafe {
+					let raw: *mut TcpStream = reader.get_ref() as *_ as *mut _;
+					(*raw).set_read_timeout(Some(500));
+				}
 
-				let line = buf_reader.read_line();
+				let line = reader.read_line();
 				match line {
 					Ok(line) => match from_str::<Message>(line.as_slice().trim_right()) {
 						Some(msg) => {
