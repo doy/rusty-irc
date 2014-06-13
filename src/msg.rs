@@ -17,7 +17,7 @@ pub mod cmd {
 		Pong(String),
 		Error(String),
 		Away(Option<String>),
-		Numeric(u16, String, Option<String>),
+		Numeric(u16, String, Vec<String>),
 		UnknownCmd(String, Vec<String>)
 	}
 }
@@ -63,8 +63,27 @@ impl fmt::Show for Message {
 			cmd::Pong(ref msg) => write!(formatter, "PONG :{}", msg),
 			cmd::Error(ref msg) => write!(formatter, "ERROR :{}", msg),
 			cmd::Away(ref msg) => if msg.is_some() { write!(formatter, "AWAY :{}", msg.get_ref()) } else { write!(formatter, "AWAY") },
-			cmd::Numeric(i, ref target, ref msg) => if msg.is_some() { write!(formatter, "{:03u} {} :{}", i, target, msg.get_ref()) } else { write!(formatter, "{:03u} {}", i, target) },
 			cmd::Motd(ref target) => if target.is_some() { write!(formatter, "MOTD :{}", target.get_ref()) } else { write!(formatter, "MOTD") },
+			cmd::Numeric(i, ref target, ref args) => {
+				try!(write!(formatter, "{:03u} {}", i, target));
+				let mut iter = args.iter().peekable();
+				loop {
+					match iter.next() {
+						Some(arg) => {
+							try!(
+								if iter.peek().is_some() {
+									write!(formatter, " {}", arg)
+								}
+								else {
+									write!(formatter, " :{}", arg)
+								}
+							);
+						}
+						None => break
+					}
+				}
+				Ok(())
+			}
 			cmd::UnknownCmd(ref cmd, ref args) => {
 				try!(write!(formatter, "{}", cmd));
 				let mut iter = args.iter().peekable();
@@ -214,9 +233,9 @@ impl FromStr for Message {
 					"MOTD" if args.len() == 0 || args.len() == 1 => cmd::Motd(args.pop()),
 					other => {
 						match from_str::<u16>(other) {
-							Some(n) if args.len() == 1 || args.len() == 2 => {
-								let mut iter = args.move_iter();
-								cmd::Numeric(n, iter.next().unwrap(), iter.next())
+							Some(n) if args.len() > 0 => {
+								let target = args.shift().unwrap();
+								cmd::Numeric(n, target, args)
 							}
 							_ => cmd::UnknownCmd(s.to_string(), args)
 						}
