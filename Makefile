@@ -43,7 +43,7 @@ COMPILER = rustc
 # For release:
 # COMPILER_FLAGS = -O
 # For debugging:
-  COMPILER_FLAGS = -g --opt-level=0
+  COMPILER_FLAGS = -Z no-opt --opt-level=0
 
 RUSTDOC = rustdoc
 
