@@ -65,14 +65,14 @@ impl IrcClient <state::Disconnected> {
 		let writer = stream;
 
 		// spawn writer thread
-		spawn(proc() {
+		std::task::TaskBuilder::new().named("rusty-irc:writer").spawn(proc() {
 			let mut writer = writer;
 			for msg in rec_writer.iter() {
 				(write!(writer, "{}\r\n", msg)).ok().expect("Unable to write to stream");
 			}
 		});
 
-		spawn(proc() {
+		std::task::TaskBuilder::new().named("rusty-irc:reader").spawn(proc() {
 			let mut reader = BufferedReader::new(reader);
 			loop {
 				unsafe {
