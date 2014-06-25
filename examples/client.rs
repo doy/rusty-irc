@@ -18,9 +18,15 @@ fn main() {
 
 	let (tx, rx) = channel();
 
-	let client = IrcClient::new("rusti-irc".to_string(), "dremann".to_string(), "Zachary Dremann".to_string());
-	let connection = client.connect(host.as_slice(), port, tx).ok().unwrap();
-	let sender = connection.sender().clone();
+	let nicks = (vec!["rusti-irc".to_string()]).move_iter();
+	let config = irc::ClientConfig {
+		nicks: nicks,
+		username: "dremann".to_string(),
+		real_name: "Zachary Dremann".to_string()
+	};
+
+	let client = IrcClient::new(config, host.as_slice(), port, tx).unwrap();
+	let sender = client.sender().clone();
 
 	spawn(proc() {
 		let mut stdin = stdio::stdin();
@@ -38,6 +44,8 @@ fn main() {
 	});
 
 	for msg in rx.iter() {
+		let c = client.clone();
+		println!("{}", c.nick());
 		println!("{} {}", msg.prefix, msg.command);
 	}
 
