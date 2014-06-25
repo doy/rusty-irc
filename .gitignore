@@ -11,12 +11,8 @@
 *.dummy
 *.exe
 *-test
-/bin/main
-/bin/test-internal
-/bin/test-external
-/doc/
 /target/
-/build/
+/examples/target/
 /.rust/
 rusti.sh
 

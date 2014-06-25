@@ -1,0 +1,18 @@
+[package]
+
+name = "rusty-irc-examples"
+version = "0.1.0"
+authors = [ "dremann@gmail.com" ]
+
+[[bin]]
+
+name = "rusti"
+
+[[bin]]
+
+name = "client"
+
+[dependencies.rusty-irc]
+
+path = "../"
+version = "0.1.0"
