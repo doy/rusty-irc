@@ -80,7 +80,7 @@ impl<T: Iterator<String>+Send+Share> IrcClient<T> {
             let mut reader_client = reader_client;
 			loop {
 				unsafe {
-					let raw: *mut TcpStream = reader.get_ref() as *_ as *mut _;
+					let raw: *mut TcpStream = reader.get_ref() as *const _ as *mut _;
 					(*raw).set_read_timeout(Some(500));
 				}
 
