@@ -31,7 +31,7 @@ pub struct IrcClient<T> {
 	output_chan: Sender<Message>,
 }
 
-impl<T: Iterator<String>+Send+Share> Clone for IrcClient<T> {
+impl<T: Iterator<String>+Send+Sync> Clone for IrcClient<T> {
 	fn clone(&self) -> IrcClient<T> {
 		IrcClient {
 			state: self.state.clone(),
@@ -41,7 +41,7 @@ impl<T: Iterator<String>+Send+Share> Clone for IrcClient<T> {
 	}
 }
 
-impl<T: Iterator<String>+Send+Share> IrcClient<T> {
+impl<T: Iterator<String>+Send+Sync> IrcClient<T> {
 	pub fn new(config: ClientConfig<T>, host: &str, port: u16, msg_chan: Sender<Message>) -> IoResult<IrcClient<T>> {
         let ClientConfig { mut nicks, username, real_name } = config;
 		let stream = try!(TcpStream::connect(host, port));
