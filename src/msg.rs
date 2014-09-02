@@ -164,7 +164,7 @@ impl FromStr for Message {
 		for c in s.chars() {
 			match c {
 				c if is_final => {
-					current_str.get_mut_ref().push_char(c);
+					current_str.as_mut().unwrap().push_char(c);
 				}
 				' ' => {
 					if is_prefix {
@@ -174,7 +174,7 @@ impl FromStr for Message {
 						cmd = current_str.take();
 					}
 					else {
-						args.push(current_str.take_unwrap());
+						args.push(current_str.take().unwrap());
 					}
 					is_prefix = false;
 				}
@@ -191,7 +191,7 @@ impl FromStr for Message {
 					if current_str.is_none() {
 						current_str = Some(String::new());
 					}
-					current_str.get_mut_ref().push_char(c)
+					current_str.as_mut().unwrap().push_char(c)
 				}
 			}
 		}
@@ -200,7 +200,7 @@ impl FromStr for Message {
 			cmd = current_str.take();
 		}
 		else {
-			args.push(current_str.take_unwrap());
+			args.push(current_str.take().unwrap());
 		}
 
 		let prefix: Option<Prefix> = prefix.and_then(|s| from_str(s.as_slice()));
@@ -234,7 +234,7 @@ impl FromStr for Message {
 					other => {
 						match from_str::<u16>(other) {
 							Some(n) if args.len() > 0 => {
-								let target = args.shift().unwrap();
+								let target = args.remove(0).unwrap();
 								cmd::Numeric(n, target, args)
 							}
 							_ => cmd::UnknownCmd(s.to_string(), args)

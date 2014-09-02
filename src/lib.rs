@@ -1,4 +1,3 @@
-#![crate_id = "irc#0.1"]
 #![crate_type = "lib"]
 
 use std::io::TcpStream;
