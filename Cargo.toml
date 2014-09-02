@@ -4,7 +4,7 @@ name = "rusty-irc"
 version = "0.1.0"
 authors = [ "dremann@gmail.com" ]
 
-[[lib]]
+[lib]
 
 name = "irc"
 path = "src/lib.rs"
